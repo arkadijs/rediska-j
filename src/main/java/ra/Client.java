@@ -49,11 +49,11 @@ public class Client {
             this.code = code;
             this.message = message;
             this.elapsedNanos = elapsedNanos;
-            this.ids = ids != null ? ids : Collections.EMPTY_LIST;
+            setIds(ids);
         }
 
-        protected Result setIds(List<String> ids) {
-            this.ids = ids;
+        protected final Result setIds(List<String> ids) {
+            this.ids = ids != null ? ids : Collections.EMPTY_LIST;
             return this;
         }
     }
@@ -85,7 +85,7 @@ public class Client {
             }
         };
     }
-    
+
     /** Adds content to the search database. */
     public Future<Result> put(String id, String content) throws IOException {
         return http.preparePut(contentUri + "/" + id).setBody(content).execute(genericHandler(HttpURLConnection.HTTP_CREATED));
