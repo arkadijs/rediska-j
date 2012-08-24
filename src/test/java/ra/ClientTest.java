@@ -21,6 +21,7 @@ public class ClientTest {
     public void testReset() throws IOException, ExecutionException, InterruptedException {
         Future<Client.Result> f = ra.reset();
         Client.Result r = f.get();
+        assertEquals(true, r.success);
         assertEquals(200, r.code);
         System.out.printf("redis-es cleared in %dms%n", r.elapsedNanos / 1000000);
     }
