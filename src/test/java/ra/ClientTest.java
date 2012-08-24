@@ -41,7 +41,6 @@ public class ClientTest {
 
     @Test
     public void testSearch() throws IOException, ExecutionException, InterruptedException {
-        testReset();
         testPut();
         Client.Result r = ra.search(what).get();
         assertEquals(200, r.code);
@@ -50,7 +49,6 @@ public class ClientTest {
 
     @Test
     public void testDelete() throws IOException, ExecutionException, InterruptedException {
-        testReset();
         testPut();
         assertEquals(200, ra.remove(what).get().code);
         Client.Result r = ra.search(what).get();
@@ -60,7 +58,6 @@ public class ClientTest {
 
     @Test
     public void testDeleteByIds() throws IOException, ExecutionException, InterruptedException {
-        testReset();
         testPut();
         Client.Result r = ra.search(what).get();
         assertEquals(200, r.code);
