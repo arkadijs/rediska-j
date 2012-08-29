@@ -26,8 +26,8 @@ public class ClientTest {
         System.out.printf("redis-es cleared in %dms%n", r.elapsedNanos / 1000000);
     }
 
-    private String aboutCat = "Like a black cat in the dark room";
-    private String what = "black cat";
+    private String aboutCat = "Like a black cāt in the dark room";
+    private String what = "black cāt";
     private int n = 10;
 
     @Test
@@ -37,6 +37,13 @@ public class ClientTest {
             f.add(ra.put("A" + i, aboutCat));
         for (int i = 0; i < n; ++i)
             assertEquals(201, f.get(i).get().code);
+    }
+
+    @Test
+    public void testAssignedId() throws IOException, ExecutionException, InterruptedException {
+        Client.Result r = ra.put(null, aboutCat).get();
+        assertEquals(201, r.code);
+        assertNotNull("content-id not assigned", r.assignedId);
     }
 
     @Test

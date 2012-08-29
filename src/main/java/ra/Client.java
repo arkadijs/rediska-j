@@ -41,6 +41,8 @@ public class Client {
         public final String message;
         /** Rediska API time in nano-seconds. */
         public final long elapsedNanos;
+        /** content-id assigned by plain PUT /content */
+        public String assignedId;
         /** The list of content-id-s returned by {@link ra.Client#search(String)} */
         public List<String> ids;
 
@@ -50,6 +52,11 @@ public class Client {
             this.message = message;
             this.elapsedNanos = elapsedNanos;
             setIds(ids);
+        }
+
+        protected final Result setAssignedId(String id) {
+            this.assignedId = id;
+            return this;
         }
 
         protected final Result setIds(List<String> ids) {
@@ -87,8 +94,22 @@ public class Client {
     }
 
     /** Adds content to the search database. */
-    public Future<Result> put(String id, String content) throws IOException {
-        return http.preparePut(contentUri + "/" + id).setBody(content).execute(genericHandler(HttpURLConnection.HTTP_CREATED));
+    public Future<Result> put(final String id, String content) throws IOException {
+        String path = id != null ? contentUri + "/" + id : contentUri;
+        return http.preparePut(path).setBodyEncoding("UTF-8").setBody(content).execute(
+                new AsyncCompletionHandler<Result>() {
+                    @Override
+                    public Result onCompleted(Response resp) throws IOException, ParseException {
+                        return genericResult(HttpURLConnection.HTTP_CREATED, resp)
+                                .setAssignedId(
+                                        // id == null &&
+                                        resp.getStatusCode() == HttpURLConnection.HTTP_CREATED
+                                                && resp.getContentType().startsWith("text/plain")
+                                                && resp.getResponseBody()!= null
+                                                && !resp.getResponseBody().isEmpty() ?
+                                                resp.getResponseBody() : null);
+                    }
+                });
     }
 
     /** Searches content for terms in query.
