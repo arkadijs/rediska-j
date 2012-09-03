@@ -18,7 +18,7 @@ public class Client {
     private final String contentUri;
     private final AsyncHttpClient http;
 
-    public Client(String host, int port, int concurency, int timeoutMillis) {
+    public Client(String host, int port, int concurrency, int timeoutMillis) {
         baseUri = "http://" + host + ":" + port + "/";
         contentUri = baseUri + "content";
         http = new AsyncHttpClient(
@@ -27,7 +27,7 @@ public class Client {
                             .setFollowRedirects(false)
                             .setCompressionEnabled(false)
                             .setConnectionTimeoutInMs(timeoutMillis)
-                            .addRequestFilter(new ThrottleRequestFilter(concurency, timeoutMillis))
+                            .addRequestFilter(new ThrottleRequestFilter(concurrency, timeoutMillis))
                             .build());
     }
 
