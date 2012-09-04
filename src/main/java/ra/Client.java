@@ -23,6 +23,7 @@ public class Client {
         contentUri = baseUri + "content";
         http = new AsyncHttpClient(
                     new AsyncHttpClientConfig.Builder()
+                            .setIOThreadMultiplier(1)
                             .setAllowPoolingConnection(true)
                             .setFollowRedirects(false)
                             .setCompressionEnabled(false)
