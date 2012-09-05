@@ -3,6 +3,8 @@ package ra;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 
+import com.biasedbit.http.future.HttpRequestFuture;
+import com.biasedbit.http.future.HttpRequestFutureListener;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -40,10 +42,27 @@ public class ClientTest {
     }
 
     @Test
+    public void testPut2() throws IOException, ExecutionException, InterruptedException {
+        HttpRequestFutureListener<Client.Result> listener = new HttpRequestFutureListener<Client.Result>() {
+                @Override
+                public void operationComplete(HttpRequestFuture<Client.Result> future) throws Exception {
+                    assertEquals(201, future.getResponseStatusCode());
+                    Client.Result r = future.getProcessedResult();
+                    assertNotNull("custom result object not available", r);
+                    assertTrue("api time not set", r.elapsedNanos > 0);
+                }
+            };
+        for (int i = 0; i < n; ++i)
+            ra.put2("P" + i, aboutCat, listener);
+        Thread.sleep(1000);
+    }
+
+    @Test
     public void testAssignedId() throws IOException, ExecutionException, InterruptedException {
         Client.Result r = ra.put(null, aboutCat).get();
         assertEquals(201, r.code);
         assertNotNull("content-id not assigned", r.assignedId);
+        assertTrue("api time not set", r.elapsedNanos > 0);
     }
 
     @Test

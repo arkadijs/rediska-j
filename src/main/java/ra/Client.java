@@ -1,7 +1,16 @@
 package ra;
 
+import com.biasedbit.http.client.DefaultHttpClient;
+import com.biasedbit.http.client.HttpClient;
+import com.biasedbit.http.future.HttpRequestFuture;
+import com.biasedbit.http.future.HttpRequestFutureListener;
+import com.biasedbit.http.processor.AbstractAccumulatorProcessor;
 import com.ning.http.client.*;
 import com.ning.http.client.extra.ThrottleRequestFilter;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBuffers;
+import org.jboss.netty.handler.codec.http.*;
+import org.jboss.netty.util.CharsetUtil;
 import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -14,11 +23,16 @@ import java.util.concurrent.Future;
 
 /** Full-text search Java API */
 public class Client {
+    private final String host;
+    private final int port;
     private final String baseUri;
     private final String contentUri;
     private final AsyncHttpClient http;
+    private final HttpClient http2;
 
     public Client(String host, int port, int concurency, int timeoutMillis) {
+        this.host = host;
+        this.port = port;
         baseUri = "http://" + host + ":" + port + "/";
         contentUri = baseUri + "content";
         http = new AsyncHttpClient(
@@ -29,6 +43,8 @@ public class Client {
                             .setConnectionTimeoutInMs(timeoutMillis)
                             .addRequestFilter(new ThrottleRequestFilter(concurency, timeoutMillis))
                             .build());
+        http2 = new DefaultHttpClient();
+        http2.init();
     }
 
     /** Represents result of Rediska API call via HTTP. */
@@ -110,6 +126,48 @@ public class Client {
                                                 resp.getResponseBody() : null);
                     }
                 });
+    }
+
+    private long elapsed2(HttpResponse resp) {
+        String hdr = resp.getHeader("X-RA-Elapsed");
+        if (hdr == null)
+            return -1L;
+        return Long.parseLong(hdr);
+    }
+
+    /** Adds content to the search database. Uses alternative HTTP client with pipelining */
+    public HttpRequestFuture<Result> put2(final String id, String content, HttpRequestFutureListener<Result> listener) {
+        String path = id != null ? "/content/" + id : "/content";
+        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, path);
+        ChannelBuffer buffer = ChannelBuffers.copiedBuffer(content, CharsetUtil.UTF_8);
+        request.setHeader(HttpHeaders.Names.CONTENT_TYPE, "text/plain;charset=UTF-8");
+        request.setHeader(HttpHeaders.Names.HOST, "localhost");
+        request.setHeader(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+        request.addHeader(HttpHeaders.Names.CONTENT_LENGTH, buffer.readableBytes());
+        request.setContent(buffer);
+        HttpRequestFuture<Result> future = http2.execute(host, port, request, new AbstractAccumulatorProcessor<Result>() {
+                private HttpResponse resp;
+                @Override
+                public boolean willProcessResponse(HttpResponse response) throws Exception  {
+                    this.resp = response;
+                    return super.willProcessResponse(response);
+                }
+                @Override
+                protected Result convertBufferToResult(ChannelBuffer buffer) {
+                    String reply = buffer.toString(CharsetUtil.UTF_8);
+                    return new Result(
+                            resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED,
+                            resp.getStatus().getCode(), resp.getStatus().getReasonPhrase(), elapsed2(resp),
+                            null)
+                                .setAssignedId(
+                                        resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED
+                                                && HttpHeaders.getHeader(resp, "Content-Type", "").startsWith("text/plain")
+                                                && !reply.isEmpty() ?
+                                                reply : null);
+                }
+            });
+        future.addListener(listener);
+        return future;
     }
 
     /** Searches content for terms in query.
