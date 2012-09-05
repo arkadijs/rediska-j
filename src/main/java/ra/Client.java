@@ -1,7 +1,7 @@
 package ra;
 
 import com.biasedbit.http.client.DefaultHttpClient;
-import com.biasedbit.http.client.HttpClient;
+import com.biasedbit.http.connection.PipeliningHttpConnectionFactory;
 import com.biasedbit.http.future.HttpRequestFuture;
 import com.biasedbit.http.future.HttpRequestFutureListener;
 import com.biasedbit.http.processor.AbstractAccumulatorProcessor;
@@ -28,13 +28,14 @@ public class Client {
     private final String baseUri;
     private final String contentUri;
     private final AsyncHttpClient http;
-    private final HttpClient http2;
+    private final DefaultHttpClient http2;
 
     public Client(String host, int port, int concurrency, int timeoutMillis) {
         this.host = host;
         this.port = port;
         baseUri = "http://" + host + ":" + port + "/";
         contentUri = baseUri + "content";
+
         http = new AsyncHttpClient(
                 new AsyncHttpClientConfig.Builder()
                         .setIOThreadMultiplier(1)
@@ -44,7 +45,16 @@ public class Client {
                         .setConnectionTimeoutInMs(timeoutMillis)
                         .addRequestFilter(new ThrottleRequestFilter(concurrency, timeoutMillis))
                         .build());
+
         http2 = new DefaultHttpClient();
+        http2.setConnectionTimeoutInMillis(timeoutMillis);
+        http2.setRequestTimeoutInMillis(timeoutMillis);
+        http2.setMaxConnectionsPerHost(concurrency);
+        http2.setMaxIoWorkerThreads(4);
+        http2.setMaxEventProcessorHelperThreads(4);
+        http2.setUseNio(true);
+      //http2.setMaxQueuedRequests(Integer.MAX_VALUE); deadlocks somewhere?
+        http2.setConnectionFactory(new PipeliningHttpConnectionFactory());
         http2.init();
     }
 

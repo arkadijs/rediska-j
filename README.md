@@ -10,6 +10,7 @@ $ git clone https://github.com/brunodecarvalho/http-client.git
 $ cd http-client && mvn install
 ```
 
+then,
 `mvn package`
 
 [1]: https://bitbucket.org/arkadi/rediska
