@@ -54,7 +54,9 @@ public class Client {
         http2.setMaxEventProcessorHelperThreads(4);
         http2.setUseNio(true);
       //http2.setMaxQueuedRequests(Integer.MAX_VALUE); deadlocks somewhere?
-        http2.setConnectionFactory(new PipeliningHttpConnectionFactory());
+        PipeliningHttpConnectionFactory f = new PipeliningHttpConnectionFactory();
+        f.setMaxRequestsInPipeline(500);
+        http2.setConnectionFactory(f);
         http2.init();
     }
 
