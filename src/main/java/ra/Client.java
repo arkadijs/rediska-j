@@ -174,7 +174,7 @@ public class Client {
                         null)
                         .setAssignedId(
                                 resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED
-                                        && HttpHeaders.getHeader(resp, "Content-Type", "").startsWith("text/plain")
+                                        && HttpHeaders.getHeader(resp, HttpHeaders.Names.CONTENT_TYPE, "").startsWith("text/plain")
                                         && !reply.isEmpty() ?
                                         reply : null);
             }
