@@ -30,19 +30,20 @@ public class Client {
     private final AsyncHttpClient http;
     private final HttpClient http2;
 
-    public Client(String host, int port, int concurency, int timeoutMillis) {
+    public Client(String host, int port, int concurrency, int timeoutMillis) {
         this.host = host;
         this.port = port;
         baseUri = "http://" + host + ":" + port + "/";
         contentUri = baseUri + "content";
         http = new AsyncHttpClient(
-                    new AsyncHttpClientConfig.Builder()
-                            .setAllowPoolingConnection(true)
-                            .setFollowRedirects(false)
-                            .setCompressionEnabled(false)
-                            .setConnectionTimeoutInMs(timeoutMillis)
-                            .addRequestFilter(new ThrottleRequestFilter(concurency, timeoutMillis))
-                            .build());
+                new AsyncHttpClientConfig.Builder()
+                        .setIOThreadMultiplier(1)
+                        .setAllowPoolingConnection(true)
+                        .setFollowRedirects(false)
+                        .setCompressionEnabled(false)
+                        .setConnectionTimeoutInMs(timeoutMillis)
+                        .addRequestFilter(new ThrottleRequestFilter(concurrency, timeoutMillis))
+                        .build());
         http2 = new DefaultHttpClient();
         http2.init();
     }
@@ -146,26 +147,26 @@ public class Client {
         request.addHeader(HttpHeaders.Names.CONTENT_LENGTH, buffer.readableBytes());
         request.setContent(buffer);
         HttpRequestFuture<Result> future = http2.execute(host, port, request, new AbstractAccumulatorProcessor<Result>() {
-                private HttpResponse resp;
-                @Override
-                public boolean willProcessResponse(HttpResponse response) throws Exception  {
-                    this.resp = response;
-                    return super.willProcessResponse(response);
-                }
-                @Override
-                protected Result convertBufferToResult(ChannelBuffer buffer) {
-                    String reply = buffer.toString(CharsetUtil.UTF_8);
-                    return new Result(
-                            resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED,
-                            resp.getStatus().getCode(), resp.getStatus().getReasonPhrase(), elapsed2(resp),
-                            null)
-                                .setAssignedId(
-                                        resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED
-                                                && HttpHeaders.getHeader(resp, "Content-Type", "").startsWith("text/plain")
-                                                && !reply.isEmpty() ?
-                                                reply : null);
-                }
-            });
+            private HttpResponse resp;
+            @Override
+            public boolean willProcessResponse(HttpResponse response) throws Exception  {
+                this.resp = response;
+                return super.willProcessResponse(response);
+            }
+            @Override
+            protected Result convertBufferToResult(ChannelBuffer buffer) {
+                String reply = buffer.toString(CharsetUtil.UTF_8);
+                return new Result(
+                        resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED,
+                        resp.getStatus().getCode(), resp.getStatus().getReasonPhrase(), elapsed2(resp),
+                        null)
+                        .setAssignedId(
+                                resp.getStatus().getCode() == HttpURLConnection.HTTP_CREATED
+                                        && HttpHeaders.getHeader(resp, "Content-Type", "").startsWith("text/plain")
+                                        && !reply.isEmpty() ?
+                                        reply : null);
+            }
+        });
         future.addListener(listener);
         return future;
     }
